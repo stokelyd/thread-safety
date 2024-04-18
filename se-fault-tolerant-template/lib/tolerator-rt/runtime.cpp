@@ -110,6 +110,15 @@ std::mutex lockClocks_mutex;
 
 // todo: map of thread ids to vector clock indexes.  whenever we create a thread, add a new index to every vector clock = 0
 
+/* HELPER FUNCTIONS */
+void receiveProgress(long tid, VectorClock mutexClock) {
+  // TODO
+}
+
+void advanceLocal(long tid) {
+  // TODO
+}
+
 
 // todo: init using sumner method instead
 void
