@@ -1,13 +1,16 @@
+#include <vector>
+#include <unordered_map>
 
 #include <cstdint>
 #include <cstdio>
-
-// todo: needed/allowed?
 #include <cstdlib>
 #include <stdbool.h>
+#include <iostream>
+
+
+
 
 extern "C" {
-
 
 // This macro allows us to prefix strings so that they are less likely to
 // conflict with existing symbol names in the examined programs.
@@ -16,6 +19,7 @@ extern "C" {
 
 // todo: size?  make proper dynamic data structure
 #define MAX_NUM_TRACKED_ALLOCATIONS 1024
+
 
 struct Allocation {
   int8_t* address;
@@ -31,9 +35,72 @@ int stackAllocationsIndex;
 struct Allocation stackAllocations[MAX_NUM_TRACKED_ALLOCATIONS];
 
 
+std::vector<std::vector<int>> vectorClocks;
+
+typedef std::vector<uint64_t> VectorClock;
+
+// todo: initialize clocks to zero when a thread is spawned
+class ShadowMemory {
+private:
+  struct ReadWriteClockPair {
+    VectorClock readClock;
+    VectorClock writeClock;
+  };
+
+  std::unordered_map<uintptr_t, ReadWriteClockPair> memoryMap;
+
+public:
+  void readAccess(uintptr_t address, size_t clockIndex) {
+    printf("shadow memory read access\n");
+
+    // todo: this can be more efficient
+    if (memoryMap.find(address) == memoryMap.end()) {
+      // not found, create a new vector clock
+      memoryMap[address] = ReadWriteClockPair();
+    }
+
+    // update the read clock for the given index
+    memoryMap[address].readClock[clockIndex]++;
+  }
+
+  // todo: need a separate function, or can be same?
+  void writeAccess(uintptr_t address, size_t clockIndex) {
+    printf("shadow memory write access\n");
+
+    // todo: this can be more efficient
+    if (memoryMap.find(address) == memoryMap.end()) {
+      // not found, create a new vector clock
+      memoryMap[address] = ReadWriteClockPair();
+    }
+
+    // update the read clock for the given index
+    memoryMap[address].writeClock[clockIndex]++;
+  }
+
+  void printClocks(uintptr_t address) {
+    if (memoryMap.find(address) != memoryMap.end()) {
+      std::cout << "Read Clock: ";
+      for (auto time : memoryMap[address].readClock) {
+        std::cout << time << " ";
+      }
+      std::cout << "Write Clock: ";
+      for (auto time : memoryMap[address].writeClock) {
+        std::cout << time << " ";
+      }
+      std::cout << std::endl;
+    } else {
+      std::cout << "Error: address not found in shadow memory" << std::endl;
+    }
+  }
+};
+
+
+
 // todo: init using sumner method instead
 void
 TOLERATE(initializeTracker)() {
+  ShadowMemory shadowMemory;
+
   heapAllocationsIndex = 0;
   stackAllocationsIndex = 0;
 
@@ -109,6 +176,7 @@ TOLERATE(onPthreadJoin)() {
   // todo: call a function here to determine tid and create new vector clock
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
+
   fprintf(stderr, "Injected pthread_join\n");
 }
 
