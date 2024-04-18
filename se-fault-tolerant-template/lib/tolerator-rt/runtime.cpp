@@ -1,12 +1,13 @@
 #include <vector>
 #include <unordered_map>
+#include <iostream>
 
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <stdbool.h>
-#include <iostream>
-
+#include <sys/syscall.h>
+#include <unistd.h>
 
 
 
@@ -21,6 +22,7 @@ extern "C" {
 #define MAX_NUM_TRACKED_ALLOCATIONS 1024
 
 
+/* BEGIN Previous tracking structures */
 struct Allocation {
   int8_t* address;
   int64_t size;
@@ -33,11 +35,12 @@ struct Allocation heapAllocations[MAX_NUM_TRACKED_ALLOCATIONS];
 
 int stackAllocationsIndex;
 struct Allocation stackAllocations[MAX_NUM_TRACKED_ALLOCATIONS];
+/* END Previous tracking structures */
 
 
-std::vector<std::vector<int>> vectorClocks;
-
+/* Vector Clocks*/
 typedef std::vector<uint64_t> VectorClock;
+
 
 // todo: initialize clocks to zero when a thread is spawned
 class ShadowMemory {
@@ -94,12 +97,18 @@ public:
   }
 };
 
+// VECTOR CLOCKS
+std::vector<VectorClock> threadClocks;
+ShadowMemory shadowMemory;
+std::vector<VectorClock> lockClocks;
+
+// todo: map of thread ids to vector clock indexes.  whenever we create a thread, add a new index to every vector clock = 0
 
 
 // todo: init using sumner method instead
 void
 TOLERATE(initializeTracker)() {
-  ShadowMemory shadowMemory;
+  // ShadowMemory shadowMemory;
 
   heapAllocationsIndex = 0;
   stackAllocationsIndex = 0;
@@ -168,7 +177,10 @@ TOLERATE(onPthreadCreate)() {
   // todo: call a function here to determine tid and create new vector clock
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
-  fprintf(stderr, "Injected pthread_create\n");
+  // int tid = pthread_self();
+  long tid = syscall(__NR_gettid);
+  fprintf(stdout, "pthread_create, tid: %d\n", tid);
+  // fprintf(stdout, "pthread_join\n");
 }
 
 void
@@ -177,7 +189,8 @@ TOLERATE(onPthreadJoin)() {
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
 
-  fprintf(stderr, "Injected pthread_join\n");
+  int tid = pthread_self();
+  fprintf(stdout, "pthread_join, tid: %d\n", tid);
 }
 
 void
@@ -185,7 +198,9 @@ TOLERATE(onMutexLock)() {
   // todo: call a function here to determine tid, update vector clock
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
-  fprintf(stderr, "Injected mutexLock\n");
+  long tid = syscall(__NR_gettid);
+  fprintf(stdout, "mutex_lock, tid: %d\n", tid);
+  // fprintf(stderr, "Injected mutexLock\n");
 }
 
 void

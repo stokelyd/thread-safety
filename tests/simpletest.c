@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdatomic.h>
 #include <pthread.h>
+#include <sys/syscall.h>
 
 // #ifndef N
 // #  warning "N was not defined"
@@ -37,7 +38,10 @@ int x_from_thread = 0;
 // }
 
 void* thread1(void* arg) {
-    // int* result = malloc(sizeof(int));
+    printf("hello from thread 1\n");
+
+    // long tid = syscall(__NR_gettid);
+    // printf("I am thread1, tid: %ld\n", tid);
 
     int x_local;
     x_local = x;                    // rd(x)
@@ -53,6 +57,10 @@ void* thread1(void* arg) {
 }
 
 void* thread2(void* arg) {
+    printf("hello from thread 2\n");
+    // long tid = syscall(__NR_gettid);
+    // printf("I am thread2, tid: %ld\n", tid);
+
     int z_local;
     pthread_mutex_lock(&mutex);     // acq(m)
     {
@@ -82,6 +90,9 @@ void run_n_tests(int numTests) {
             fprintf(stderr, "Error creating thread\n");
             exit(1);
         }
+
+        // fprintf("tid1: %d", threads[0]);
+        // fprintf("tid2: %d", threads[1]);
         
         if (pthread_join(threads[0], NULL)) {
             fprintf(stderr, "Error joining thread\n");
