@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <mutex>
 
 
 
@@ -23,6 +24,7 @@ extern "C" {
 
 
 /* BEGIN Previous tracking structures */
+// todo: improve using STL
 struct Allocation {
   int8_t* address;
   int64_t size;
@@ -102,6 +104,10 @@ std::vector<VectorClock> threadClocks;
 ShadowMemory shadowMemory;
 std::vector<VectorClock> lockClocks;
 
+std::mutex threadClocks_mutex;
+std::mutex shadowMemory_mutex;
+std::mutex lockClocks_mutex;
+
 // todo: map of thread ids to vector clock indexes.  whenever we create a thread, add a new index to every vector clock = 0
 
 
@@ -171,6 +177,8 @@ TOLERATE(unregisterAlloca)(int8_t* address) {
 }
 
 /* TRACK THREADING FUNCTIONS */
+// todo: also track initial (main) thread
+
 // todo: takes an argument of some kind?
 void
 TOLERATE(onPthreadCreate)() {
@@ -178,19 +186,20 @@ TOLERATE(onPthreadCreate)() {
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
   // int tid = pthread_self();
-  long tid = syscall(__NR_gettid);
-  fprintf(stdout, "pthread_create, tid: %d\n", tid);
-  // fprintf(stdout, "pthread_join\n");
+
+  // todo: use first argument of function call in LLVM to automatically update 
+
+  // long tid = syscall(__NR_gettid);
+  // fprintf(stdout, "pthread_create, tid: %d\n", tid);
+  fprintf(stdout, "pthread_create\n");
 }
 
 void
 TOLERATE(onPthreadJoin)() {
-  // todo: call a function here to determine tid and create new vector clock
-  // update existing vector clocks
+  // update existing vector clocks - remove?
   // update shadow memory (todo: stretch?)
 
-  int tid = pthread_self();
-  fprintf(stdout, "pthread_join, tid: %d\n", tid);
+  fprintf(stdout, "pthread_join\n");
 }
 
 void
@@ -208,7 +217,9 @@ TOLERATE(onMutexUnlock)() {
   // todo: call a function here to determine tid, update vector clock
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
-  fprintf(stderr, "Injected mutexUnlock\n");
+  // fprintf(stderr, "Injected mutexUnlock\n");
+  long tid = syscall(__NR_gettid);
+  fprintf(stdout, "mutex_unlock, tid: %d\n", tid);
 }
 
 
@@ -217,47 +228,9 @@ TOLERATE(onMutexUnlock)() {
 void
 // TOLERATE(isValidLoadWithExit)(int8_t* address, int64_t size) { // todo: size needed?
 TOLERATE(isValidLoadWithExit)(int8_t* address) { // todo: size needed?
-  // todo: temp
-  int64_t size = 0; 
-  // printf("Load from: address = %p\n", address);
+  // check against last write
 
-  int8_t* memoryAccessStart = address;
-  int8_t* memoryAccessEnd = address + size;
-
-  int8_t* validMemoryStart;
-  int8_t* validMemoryEnd;
-
-  for (int i = 0; i < heapAllocationsIndex; ++i) {
-    if (heapAllocations[i].address == 0) {
-      continue;
-    }
-
-    validMemoryStart = heapAllocations[i].address;
-    validMemoryEnd = heapAllocations[i].address + heapAllocations[i].size;
-
-    // todo: <= end instead?
-    if (memoryAccessStart >= validMemoryStart && memoryAccessEnd < validMemoryEnd) { 
-      // printf("Valid heap access: address: %p + size: %lld == computed: %p\n", address, (long long)size, address+size);
-      return;
-    }
-  }
-
-  // todo: <= end instead?
-  for (int i = 0; i < stackAllocationsIndex; ++i) {
-    if (stackAllocations[i].address == 0) {
-      continue;
-    }
-
-    validMemoryStart = stackAllocations[i].address;
-    validMemoryEnd = stackAllocations[i].address + stackAllocations[i].size;
-
-    if (memoryAccessStart >= validMemoryStart && memoryAccessEnd < validMemoryEnd) {
-      // printf("Valid stack access: address: %p + size: %lld == computed: %p\n", address, (long long)size, address+size);
-      return;
-    }
-  }
-
-  fprintf(stderr, "FOUND: Invalid read from memory\n");
+  fprintf(stdout, "LOAD (Read)\n");
 }
 
 
@@ -267,47 +240,9 @@ TOLERATE(isValidLoadWithExit)(int8_t* address) { // todo: size needed?
 void
 // TOLERATE(isValidStoreWithExit)(int8_t* address, int64_t size) { // todo: size needed?
 TOLERATE(isValidStoreWithExit)(int8_t* address) { // todo: size needed?
-  // todo: temp
-  int64_t size = 0; 
-  // printf("Store to: address = %p\n", address);
+  // check against last read and write
 
-  int8_t* memoryAccessStart = address;
-  int8_t* memoryAccessEnd = address + size;
-
-  int8_t* validMemoryStart;
-  int8_t* validMemoryEnd;
-
-  for (int i = 0; i < heapAllocationsIndex; ++i) {
-    if (heapAllocations[i].address == 0) {
-      continue;
-    }
-
-    validMemoryStart = heapAllocations[i].address;
-    validMemoryEnd = heapAllocations[i].address + heapAllocations[i].size;
-
-    // todo: <= end instead?
-    if (memoryAccessStart >= validMemoryStart && memoryAccessEnd < validMemoryEnd) { 
-      // printf("Valid heap access: address: %p + size: %lld == computed: %p\n", address, (long long)size, address+size);
-      return;
-    }
-  }
-
-  // todo: <= end instead?
-  for (int i = 0; i < stackAllocationsIndex; ++i) {
-    if (stackAllocations[i].address == 0) {
-      continue;
-    }
-
-    validMemoryStart = stackAllocations[i].address;
-    validMemoryEnd = stackAllocations[i].address + stackAllocations[i].size;
-
-    if (memoryAccessStart >= validMemoryStart && memoryAccessEnd < validMemoryEnd) {
-      // printf("Valid stack access: address: %p + size: %lld == computed: %p\n", address, (long long)size, address+size);
-      return;
-    }
-  }
-
-  fprintf(stderr, "FOUND: Invalid write to memory\n");
+  fprintf(stdout, "STORE (Write)\n");
 }
 
 
