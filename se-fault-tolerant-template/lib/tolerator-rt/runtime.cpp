@@ -109,6 +109,8 @@ std::mutex shadowMemory_mutex;
 std::mutex lockClocks_mutex;
 
 // todo: map of thread ids to vector clock indexes.  whenever we create a thread, add a new index to every vector clock = 0
+std::vector<uint64_t> threads;
+
 
 /* HELPER FUNCTIONS */
 void receiveProgress(long tid, VectorClock mutexClock) {
@@ -117,6 +119,11 @@ void receiveProgress(long tid, VectorClock mutexClock) {
 
 void advanceLocal(long tid) {
   // TODO
+}
+
+long getCurrentTid() {
+  long tid = syscall(__NR_gettid);
+  return tid;
 }
 
 
@@ -139,7 +146,6 @@ TOLERATE(initializeTracker)() {
 /* TRACK ALLOCATIONS */
 void
 TOLERATE(registerMalloc)(int8_t* address, int64_t size) {
-// TOLERATE(registerMalloc)(int64_t size) {
   // printf("Registering Malloc: size = %d\n", size);
   // printf("Registering Malloc: address = %p, size = %lld\n", address, (long long)size);
 
@@ -216,7 +222,7 @@ TOLERATE(onMutexLock)() {
   // todo: call a function here to determine tid, update vector clock
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
-  long tid = syscall(__NR_gettid);
+  long tid = getCurrentTid();
   fprintf(stdout, "mutex_lock, tid: %d\n", tid);
   // fprintf(stderr, "Injected mutexLock\n");
 }
@@ -227,7 +233,7 @@ TOLERATE(onMutexUnlock)() {
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
   // fprintf(stderr, "Injected mutexUnlock\n");
-  long tid = syscall(__NR_gettid);
+  long tid = getCurrentTid();
   fprintf(stdout, "mutex_unlock, tid: %d\n", tid);
 }
 
@@ -277,7 +283,13 @@ TOLERATE(isValidFreeWithExit)(int8_t* address) {
 
 
 
+void
+TOLERATE(registerIfNewThread)() {
+  long tid = getCurrentTid();
+  fprintf(stdout, "tid: %d\n", tid);
 
+  // todo
+}
 
 
 

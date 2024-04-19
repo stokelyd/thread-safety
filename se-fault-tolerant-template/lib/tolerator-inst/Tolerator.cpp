@@ -40,6 +40,8 @@ FunctionCallee onPthreadJoin;
 FunctionCallee onMutexLock;
 FunctionCallee onMutexUnlock;
 
+FunctionCallee registerIfNewThread;
+
 // TYPES
 Type* voidTy;
 IntegerType* int1Ty; 
@@ -340,11 +342,56 @@ Tolerator::runOnModule(Module& m) {
   isValidStoreWithExit = m.getOrInsertFunction("ToLeRaToR_isValidStoreWithExit", voidTy, int8PtrTy);  // todo: size arg
   isValidFreeWithExit = m.getOrInsertFunction("ToLeRaToR_isValidFreeWithExit", voidTy, int8PtrTy);
 
+  // todo: pass argument of current thread?
   onPthreadCreate = m.getOrInsertFunction("ToLeRaToR_onPthreadCreate", voidTy);
   onPthreadJoin = m.getOrInsertFunction("ToLeRaToR_onPthreadJoin", voidTy);
   onMutexLock = m.getOrInsertFunction("ToLeRaToR_onMutexLock", voidTy);
   onMutexUnlock = m.getOrInsertFunction("ToLeRaToR_onMutexUnlock", voidTy);
+
+  registerIfNewThread = m.getOrInsertFunction("ToLeRaToR_registerIfNewThread", voidTy);
   
+
+  // // todo: replace with better impl.
+  //   std::vector<Instruction*> startOfFunctionInstructions;
+  //   for (auto& F : m) {
+
+  //     // printf("here\n");
+  //     // BasicBlock& EntryBlock = (&F)->getEntryBlock();
+  //     // // auto& EntryBlock = (&F)->get();
+  //     // Instruction* FirstInstruction = &(*EntryBlock.getFirstInsertionPt());
+  //     // startOfFunctionInstructions.push_back(FirstInstruction);
+
+  //     // IRBuilder<> Builder(I);
+  //     // Builder.CreateCall(llvm::cast<Function>(registerIfNewThread.getCallee()));
+
+  //     // printf("here\n");
+
+  //   // FunctionCallee helloFunc = F.getParent()->getOrInsertFunction("ToLeRaToR_helloworld", voidTy);
+  //     // for (auto& B : F) {
+  //     //   for (auto& I : B) {
+  //     //     if (auto* callInst = dyn_cast<CallInst>(&I)) {
+  //     //       outs() << "function name: " << callInst->getCalledFunction()->getName() << "\n";
+  //     //       // outs() << "function: " << I.getFunction()->getName() << "\n";
+  //     //     }
+  //     //   }
+  //     // }
+
+
+  //     // if (F.isDeclaration()) {
+  //     //   continue;
+  //     // }
+
+  //     // BasicBlock* EntryBB = &F.front();
+  //     // IRBuilder<> Builder(EntryBB);
+  //     // Builder.CreateCall(llvm::cast<Function>(registerIfNewThread.getCallee()));
+  //   }
+
+  // for (auto* I : startOfFunctionInstructions) {
+  //   printf("here\n");
+  //   IRBuilder<> Builder(I);
+  //   Builder.CreateCall(llvm::cast<Function>(registerIfNewThread.getCallee()));
+  // }
+
 
   // visit instructions and build work lists of instructions that need instrumenting
   InstrumentationVisitor visitor;
@@ -354,31 +401,24 @@ Tolerator::runOnModule(Module& m) {
   for (auto* I : visitor.mallocInstructions) {
     instrumentMallocInstruction(I);
   }
-
   for (auto* I : visitor.freeInstructions) {
     instrumentFreeInstruction(I);
   }
-
   for (auto* I : visitor.allocaInstructions) {
     instrumentAllocaInstruction(I);
   }
-
   for (auto* I : visitor.loadInstructions) {
     instrumentLoadInstruction(I);
   }
-
   for (auto* I : visitor.storeInstructions) {
     instrumentStoreInstruction(I);
   }
-
   for (auto* I : visitor.pthreadCreateInstructions) {
     instrumentPthreadCreateInstruction(I);
   }
-
   for (auto* I : visitor.pthreadJoinInstructions) {
     instrumentPthreadJoinInstruction(I);
   }
-
   for (auto* I : visitor.pthreadMutexLockInstructions) {
     instrumentPthreadMutexLockInstruction(I);
   }
@@ -401,6 +441,12 @@ Tolerator::runOnModule(Module& m) {
   //       }
   //     }
   //   }
+
+  // std::vector<Instruction*> startOfFunctionInstructions;
+  // for (auto& F : m) {
+  //   Instruction& firstInst = *(F.begin()->begin());
+  // }
+
 
 
   // get globals
