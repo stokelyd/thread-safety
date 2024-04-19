@@ -42,67 +42,137 @@ struct Allocation stackAllocations[MAX_NUM_TRACKED_ALLOCATIONS];
 
 
 /* Vector Clocks*/
-typedef std::vector<uint64_t> VectorClock;
+// typedef std::vector<uint64_t> VectorClock;
 
-
-// todo: initialize clocks to zero when a thread is spawned
-class ShadowMemory {
+class VectorClock {
 private:
-  struct ReadWriteClockPair {
-    VectorClock readClock;
-    VectorClock writeClock;
-  };
-
-  std::unordered_map<uintptr_t, ReadWriteClockPair> memoryMap;
+  std::unordered_map<long, uint64_t> vectorClock;
+  std::mutex vectorClock_mutex;
 
 public:
-  void readAccess(uintptr_t address, size_t clockIndex) {
-    printf("shadow memory read access\n");
-
-    // todo: this can be more efficient
-    if (memoryMap.find(address) == memoryMap.end()) {
-      // not found, create a new vector clock
-      memoryMap[address] = ReadWriteClockPair();
-    }
-
-    // update the read clock for the given index
-    memoryMap[address].readClock[clockIndex]++;
+  void advanceLocal(long tid) {
+    // todo: bounds check/init to 0?
+    std::lock_guard<std::mutex> lock(vectorClock_mutex);
+    vectorClock[tid]++;
   }
 
-  // todo: need a separate function, or can be same?
-  void writeAccess(uintptr_t address, size_t clockIndex) {
-    printf("shadow memory write access\n");
-
-    // todo: this can be more efficient
-    if (memoryMap.find(address) == memoryMap.end()) {
-      // not found, create a new vector clock
-      memoryMap[address] = ReadWriteClockPair();
-    }
-
-    // update the read clock for the given index
-    memoryMap[address].writeClock[clockIndex]++;
+  // updates a lock with the progress of the current thread
+  void sendProgress(VectorClock& clock) {
+    // todo
   }
 
-  void printClocks(uintptr_t address) {
-    if (memoryMap.find(address) != memoryMap.end()) {
-      std::cout << "Read Clock: ";
-      for (auto time : memoryMap[address].readClock) {
-        std::cout << time << " ";
-      }
-      std::cout << "Write Clock: ";
-      for (auto time : memoryMap[address].writeClock) {
-        std::cout << time << " ";
-      }
-      std::cout << std::endl;
-    } else {
-      std::cout << "Error: address not found in shadow memory" << std::endl;
+  // receives the progress from a given lock
+  void receiveProgress(VectorClock& clock) {
+    // todo
+  }
+
+  // merge another VectorClock into this one, taking the max of each clock value
+  void merge(const VectorClock& other) {
+    for (const auto& entry : other.vectorClock) {
+      vectorClock[entry.first] = std::max(vectorClock[entry.first], entry.second);
     }
+  }
+
+  // return true if this VectorClock is less than or equal to the other (elementwise)
+  bool happensBefore(const VectorClock& other) {
+    bool isLessOrEqual = true;
+    for (const auto& entry : vectorClock) {
+      auto it = other.vectorClock.find(entry.first);
+      if (it != other.vectorClock.end()) {
+        // same entry found
+        if (entry.second > it->second) {
+          isLessOrEqual = false;
+          break;
+        }
+      } else {
+        // entry not found
+        isLessOrEqual = false;
+        break;
+      }
+    }
+    return isLessOrEqual;
   }
 };
 
+class VectorClockManager {
+private:
+  std::unordered_map<long, VectorClock> threadClocks;
+  std::mutex threadClock_mutex;
+
+public:
+  VectorClock& getVectorClock(long tid) {
+    std::lock_guard<std::mutex> lock(threadClock_mutex); // todo: verify
+    return threadClocks[tid];
+  }
+};
+
+VectorClockManager threads;
+
+// class LockManager {
+// private:
+//   std::unordered_map<
+// }
+
+
+
+// todo: initialize clocks to zero when a thread is spawned
+// class ShadowMemory {
+// private:
+//   struct ReadWriteClockPair {
+//     VectorClock readClock;
+//     VectorClock writeClock;
+//   };
+
+//   std::unordered_map<uintptr_t, ReadWriteClockPair> memoryMap;
+
+// public:
+//   void readAccess(uintptr_t address, size_t clockIndex) {
+//     printf("shadow memory read access\n");
+
+//     // todo: this can be more efficient
+//     if (memoryMap.find(address) == memoryMap.end()) {
+//       // not found, create a new vector clock
+//       memoryMap[address] = ReadWriteClockPair();
+//     }
+
+//     // update the read clock for the given index
+//     memoryMap[address].readClock[clockIndex]++;
+//   }
+
+//   // todo: need a separate function, or can be same?
+//   void writeAccess(uintptr_t address, size_t clockIndex) {
+//     printf("shadow memory write access\n");
+
+//     // todo: this can be more efficient
+//     if (memoryMap.find(address) == memoryMap.end()) {
+//       // not found, create a new vector clock
+//       memoryMap[address] = ReadWriteClockPair();
+//     }
+
+//     // update the read clock for the given index
+//     memoryMap[address].writeClock[clockIndex]++;
+//   }
+
+//   void printClocks(uintptr_t address) {
+//     if (memoryMap.find(address) != memoryMap.end()) {
+//       std::cout << "Read Clock: ";
+//       for (auto time : memoryMap[address].readClock) {
+//         std::cout << time << " ";
+//       }
+//       std::cout << "Write Clock: ";
+//       for (auto time : memoryMap[address].writeClock) {
+//         std::cout << time << " ";
+//       }
+//       std::cout << std::endl;
+//     } else {
+//       std::cout << "Error: address not found in shadow memory" << std::endl;
+//     }
+//   }
+// };
+
 // VECTOR CLOCKS
-std::vector<VectorClock> threadClocks;
-ShadowMemory shadowMemory;
+// std::vector<VectorClock> threadClocks;
+// ShadowMemory shadowMemory;
 std::vector<VectorClock> lockClocks;
 
 std::mutex threadClocks_mutex;
@@ -117,7 +187,7 @@ std::mutex threadIds_mutex;
 /* HELPER FUNCTIONS */
 void sendProgress(long tid, VectorClock mutexClock) {
   auto it = std::find(threadIds.begin(), threadIds.end(), tid);
-  
+
   if (it != threadIds.end()) {
     int index = it - threadIds.begin();
   }
