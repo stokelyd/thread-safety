@@ -269,7 +269,8 @@ Tolerator::instrumentPthreadCreateInstruction(Instruction* I) {
 
   DILocation* debugLoc = I->getDebugLoc();
   if (debugLoc) {
-    outs() << "Function call at " << debugLoc->getLine() << "\n";
+    outs() << "Function call at " << debugLoc->getLine() << "\n";    
+    outs() << "Filename: " << I->getFunction()->getParent()->getSourceFileName() << "\n";
   }
 
   Builder.CreateCall(llvm::cast<Function>(onPthreadCreate.getCallee()));
