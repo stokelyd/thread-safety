@@ -136,11 +136,10 @@ public:
   }
 };
 
-VectorClockManager threads;
+VectorClockManager* threads = nullptr;
 VectorClockManager* locks = nullptr;
 
 
-std::vector<int> testVector;
 
 
 // class LockManager {
@@ -259,7 +258,11 @@ TOLERATE(initializeTracker)() {
   long tid = getCurrentTid();
   printf("initialize: tid=%d\n", tid);
 
+  // todo: use unique_ptr instead of new
   locks = new VectorClockManager();
+  threads = new VectorClockManager();
+
+
 
   heapAllocationsIndex = 0;
   stackAllocationsIndex = 0;
@@ -456,9 +459,14 @@ TOLERATE(goodbyeworld)() {
   //   }
   // }
 
-  printf("\nVector Clock Status at exit:\n");
-
+  printf("\nLock Clock Status at exit:\n");
   locks->printAllClocks();
+  free(locks);
+
+  printf("\nThread Clock Status at exit:\n");
+  threads->printAllClocks();
+  free(threads);
+  
 }
 
 
