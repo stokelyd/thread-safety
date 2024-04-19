@@ -19,7 +19,7 @@ out/bin/tolerator ../tests/simpletest.ll -o instrumented
 clang -g -c -emit-llvm simpletest.c -o simple.bc
 
 // generate .ll file
-clang -S -emit-llvm simpletest.c
+clang -S -O0 -g -emit-llvm simpletest.c
 
 // ll file from generated bitcode
 /home/stokely/clang+llvm-17.0.6-aarch64-linux-gnu/bin/llvm-dis instrumented.tolerator.bc -o instrumented.tolerator.ll

@@ -265,7 +265,13 @@ Tolerator::instrumentPthreadCreateInstruction(Instruction* I) {
   Value* address = I->getOperand(0);
   Value* args[] = { address };
 
-  // outs() << "pthread_create: lOGGING\n";
+  outs() << "pthread_create: lOGGING\n";
+
+  DILocation* debugLoc = I->getDebugLoc();
+  if (debugLoc) {
+    outs() << "Function call at " << debugLoc->getLine() << "\n";
+  }
+
   Builder.CreateCall(llvm::cast<Function>(onPthreadCreate.getCallee()));
 }
 
