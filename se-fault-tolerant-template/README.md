@@ -14,12 +14,14 @@ out/bin/tolerator -log ../se-fault-tolerant-template/tests/simple.bc -o simple
 // should run like this (from ~/CMPT479/Exercises/ex5/build):
 out/bin/tolerator <toinst.ll> -o instrumented
 out/bin/tolerator ../tests/simpletest.ll -o instrumented
+out/bin/tolerator ../tests/slides-example.ll -o instrumented
 
 // generate bitcode
 clang -g -c -emit-llvm simpletest.c -o simple.bc
 
 // generate .ll file
 clang -S -O0 -g -emit-llvm simpletest.c
+clang -S -O0 -g -emit-llvm slides-example.c
 
 // ll file from generated bitcode
 /home/stokely/clang+llvm-17.0.6-aarch64-linux-gnu/bin/llvm-dis instrumented.tolerator.bc -o instrumented.tolerator.ll
