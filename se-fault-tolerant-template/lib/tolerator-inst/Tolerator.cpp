@@ -520,14 +520,16 @@ Tolerator::runOnModule(Module& m) {
   //   // }
   // }
 
-     
+  // todo: refactor/remove
   appendToGlobalCtors(m, llvm::cast<Function>(initializeTracker.getCallee()), 0);
 
-  auto helloworld = m.getOrInsertFunction("ToLeRaToR_helloworld", voidTy);
-  appendToGlobalCtors(m, llvm::cast<Function>(helloworld.getCallee()), 0);
 
-  // auto goodbyeworld = m.getOrInsertFunction("ToLeRaToR_goodbyeworld", voidTy);
-  // appendToGlobalDtors(m, llvm::cast<Function>(goodbyeworld.getCallee()), 0);
+  // auto helloworld = m.getOrInsertFunction("ToLeRaToR_helloworld", voidTy);
+  // appendToGlobalCtors(m, llvm::cast<Function>(helloworld.getCallee()), 0);
+
+
+  auto goodbyeworld = m.getOrInsertFunction("ToLeRaToR_goodbyeworld", voidTy);
+  appendToGlobalDtors(m, llvm::cast<Function>(goodbyeworld.getCallee()), 0);
 
   return true;
 }
