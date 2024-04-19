@@ -218,6 +218,7 @@ long getCurrentTid() {
 }
 
 
+
 // todo: init using sumner method instead
 void
 TOLERATE(initializeTracker)() {
@@ -307,15 +308,12 @@ TOLERATE(onPthreadJoin)() {
 
 void
 TOLERATE(onMutexLock)(int8_t* mutex) {
-  printf("mutex_lock, mutex: %hd\n", mutex);
   // todo: call a function here to determine tid, update vector clock
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
   long tid = getCurrentTid();
   fprintf(stdout, "mutex_lock, tid: %d\n", tid);
-
-
-  // fprintf(stderr, "Injected mutexLock\n");
+  printf("mutex_lock, mutex: %hd\n", mutex);
 }
 
 void
@@ -323,9 +321,10 @@ TOLERATE(onMutexUnlock)(int8_t* mutex) {
   // todo: call a function here to determine tid, update vector clock
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
-  // fprintf(stderr, "Injected mutexUnlock\n");
+
   long tid = getCurrentTid();
   fprintf(stdout, "mutex_unlock, tid: %d\n", tid);
+  printf("mutex_unlock, mutex: %hd\n", mutex);
 }
 
 
@@ -336,7 +335,7 @@ void
 TOLERATE(isValidLoadWithExit)(int8_t* address) { // todo: size needed?
   // check against last write
 
-  fprintf(stdout, "LOAD (Read)\n");
+  // fprintf(stdout, "LOAD (Read)\n");
 }
 
 
@@ -348,7 +347,7 @@ void
 TOLERATE(isValidStoreWithExit)(int8_t* address) { // todo: size needed?
   // check against last read and write
 
-  fprintf(stdout, "STORE (Write)\n");
+  // fprintf(stdout, "STORE (Write)\n");
 }
 
 
