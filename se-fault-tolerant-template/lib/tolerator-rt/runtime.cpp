@@ -59,13 +59,15 @@ public:
   }
 
   // updates a lock with the progress of the current thread
-  void sendProgress(VectorClock& clock) {
-    // todo
+  void sendProgress(VectorClock& lock) {
+    // todo - correct semantics?
+    lock.merge(*this);
   }
 
   // receives the progress from a given lock
-  void receiveProgress(VectorClock& clock) {
-    // todo
+  void receiveProgress(VectorClock& lock) {
+    // todo - correct semantics?
+    merge(lock);
   }
 
   // merge another VectorClock into this one, taking the max of each clock value
@@ -354,17 +356,17 @@ TOLERATE(onMutexLock)(int8_t* mutex) {
   long tid = getCurrentTid();
   printf("mutex_lock: tid=%d mutex=%hd\n", tid, mutex);
 
-  // locks.registerNewClockIfNotContains(tid);
+
+  VectorClock& threadClock = threads->getVectorClock(tid);
   VectorClock& mutexClock = locks->getVectorClock(tid);
-  // VectorClock& threadClock = threads.getVectorClock(tid);
+  
+  threadClock.receiveProgress(mutexClock);
+  threadClock.advanceLocal(tid);
+  // printf("After advance: ");
+  // mutexClock.print();
 
-  // mutexClock.receiveProgress()
-  mutexClock.advanceLocal(tid);
-  printf("After advance: ");
-  mutexClock.print();
-
-  printf("All: ");
-  locks->printAllClocks();
+  // printf("All: ");
+  // locks->printAllClocks();
 }  
 
 void
@@ -375,6 +377,12 @@ TOLERATE(onMutexUnlock)(int8_t* mutex) {
 
   long tid = getCurrentTid();
   printf("mutex_unlock: tid=%d mutex=%hd\n", tid, mutex);
+
+  VectorClock& threadClock = threads->getVectorClock(tid);
+  VectorClock& mutexClock = locks->getVectorClock(tid);
+  
+  threadClock.sendProgress(mutexClock);
+  threadClock.advanceLocal(tid);
 }
 
 
