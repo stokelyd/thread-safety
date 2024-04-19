@@ -1,6 +1,7 @@
 #include <vector>
 #include <unordered_map>
 #include <iostream>
+#include <algorithm>
 
 #include <cstdint>
 #include <cstdio>
@@ -109,12 +110,18 @@ std::mutex shadowMemory_mutex;
 std::mutex lockClocks_mutex;
 
 // todo: map of thread ids to vector clock indexes.  whenever we create a thread, add a new index to every vector clock = 0
-std::vector<uint64_t> threads;
+std::vector<long> threadIds;
+std::mutex threadIds_mutex;
 
 
 /* HELPER FUNCTIONS */
-void receiveProgress(long tid, VectorClock mutexClock) {
-  // TODO
+void sendProgress(long tid, VectorClock mutexClock) {
+  auto it = std::find(threadIds.begin(), threadIds.end(), tid);
+  
+  if (it != threadIds.end()) {
+    int index = it - threadIds.begin();
+  }
+  
 }
 
 void advanceLocal(long tid) {
@@ -123,6 +130,20 @@ void advanceLocal(long tid) {
 
 long getCurrentTid() {
   long tid = syscall(__NR_gettid);
+
+  // todo: this is temporary, create a more robust solution
+  threadIds_mutex.lock();
+  {
+    if(std::find(threadIds.begin(), threadIds.end(), tid) != threadIds.end()) {
+      // threadId is currently tracked
+    } else {
+      threadIds.push_back(tid);
+      printf("Adding tid: %ld\n", tid);
+      // update all existing clocks?
+    }
+  }
+  threadIds_mutex.unlock();
+
   return tid;
 }
 
@@ -203,15 +224,12 @@ TOLERATE(onPthreadCreate)() {
   // int tid = pthread_self();
 
   // todo: use first argument of function call in LLVM to automatically update 
-
-  // long tid = syscall(__NR_gettid);
-  // fprintf(stdout, "pthread_create, tid: %d\n", tid);
   fprintf(stdout, "pthread_create\n");
 }
 
 void
 TOLERATE(onPthreadJoin)() {
-  // update existing vector clocks - remove?
+  // update existing vector clocks - remove
   // update shadow memory (todo: stretch?)
 
   fprintf(stdout, "pthread_join\n");
@@ -224,6 +242,8 @@ TOLERATE(onMutexLock)() {
   // update shadow memory (todo: stretch?)
   long tid = getCurrentTid();
   fprintf(stdout, "mutex_lock, tid: %d\n", tid);
+
+
   // fprintf(stderr, "Injected mutexLock\n");
 }
 
