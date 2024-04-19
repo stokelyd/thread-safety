@@ -45,7 +45,7 @@ struct Allocation stackAllocations[MAX_NUM_TRACKED_ALLOCATIONS];
 // typedef std::vector<uint64_t> VectorClock;
 
 class VectorClock {
-private:
+public:
   std::unordered_map<long, uint64_t> vectorClock;
   std::mutex vectorClock_mutex;
 
@@ -95,19 +95,27 @@ public:
 };
 
 class VectorClockManager {
-private:
+public:
   std::unordered_map<long, VectorClock> threadClocks;
   std::mutex threadClock_mutex;
 
 public:
-  VectorClock& getVectorClock(long tid) {
+  void addVectorClock(long id) {
+    threadClocks.emplace(id, VectorClock());
+  }
+
+  VectorClock& getVectorClock(long id) {
     std::lock_guard<std::mutex> lock(threadClock_mutex); // todo: verify
-    return threadClocks[tid];
+    return threadClocks[id];
+  }
+
+  bool contains(long id) {
+    return threadClocks.find(id) == threadClocks.end() ? false : true;
   }
 };
 
 VectorClockManager threads;
-
+VectorClockManager locks;
 // class LockManager {
 // private:
 //   std::unordered_map<
@@ -115,93 +123,90 @@ VectorClockManager threads;
 
 
 
-// todo: initialize clocks to zero when a thread is spawned
-// class ShadowMemory {
-// private:
-//   struct ReadWriteClockPair {
-//     VectorClock readClock;
-//     VectorClock writeClock;
-//   };
+typedef std::vector<uint64_t> ShadowMemoryVectorClock;
+// todo: need to initialize clocks to zero when a thread is spawned?
+class ShadowMemory {
+private:
+  struct ReadWriteClockPair {
+    VectorClock readClock;
+    VectorClock writeClock;
 
-//   std::unordered_map<uintptr_t, ReadWriteClockPair> memoryMap;
+    // custom ctor
+    ReadWriteClockPair() : readClock(), writeClock() {}
+  };
 
-// public:
-//   void readAccess(uintptr_t address, size_t clockIndex) {
-//     printf("shadow memory read access\n");
+  std::unordered_map<uintptr_t, ReadWriteClockPair> memoryMap;
+  std::mutex shadowMemory_mutex;
 
-//     // todo: this can be more efficient
-//     if (memoryMap.find(address) == memoryMap.end()) {
-//       // not found, create a new vector clock
-//       memoryMap[address] = ReadWriteClockPair();
-//     }
+public:
+  void readAccess(uintptr_t address, size_t clockIndex) {
+    printf("shadow memory read access\n");
 
-//     // update the read clock for the given index
-//     memoryMap[address].readClock[clockIndex]++;
-//   }
+    std::lock_guard<std::mutex> lock(shadowMemory_mutex);
+    // todo: this can be more efficient
+    if (memoryMap.find(address) == memoryMap.end()) {
+      // not found, create a new vector clock
+      // ReadWriteClockPair newPair;
+      // memoryMap[address] = ReadWriteClockPair();
+      memoryMap.emplace(address, ReadWriteClockPair());
+    }
 
-//   // todo: need a separate function, or can be same?
-//   void writeAccess(uintptr_t address, size_t clockIndex) {
-//     printf("shadow memory write access\n");
+    // update the read clock for the given index
+    // memoryMap[address].readClock[clockIndex]++;
+  }
 
-//     // todo: this can be more efficient
-//     if (memoryMap.find(address) == memoryMap.end()) {
-//       // not found, create a new vector clock
-//       memoryMap[address] = ReadWriteClockPair();
-//     }
+  // todo: need a separate function, or can be same?
+  void writeAccess(uintptr_t address, size_t clockIndex) {
+    printf("shadow memory write access\n");
 
-//     // update the read clock for the given index
-//     memoryMap[address].writeClock[clockIndex]++;
-//   }
+    std::lock_guard<std::mutex> lock(shadowMemory_mutex);
+    // todo: this can be more efficient
+    if (memoryMap.find(address) == memoryMap.end()) {
+      // not found, create a new vector clock
+      // memoryMap[address] = ReadWriteClockPair();
+      memoryMap.emplace(address, ReadWriteClockPair());
+    }
 
-//   void printClocks(uintptr_t address) {
-//     if (memoryMap.find(address) != memoryMap.end()) {
-//       std::cout << "Read Clock: ";
-//       for (auto time : memoryMap[address].readClock) {
-//         std::cout << time << " ";
-//       }
-//       std::cout << "Write Clock: ";
-//       for (auto time : memoryMap[address].writeClock) {
-//         std::cout << time << " ";
-//       }
-//       std::cout << std::endl;
-//     } else {
-//       std::cout << "Error: address not found in shadow memory" << std::endl;
-//     }
-//   }
-// };
+    // update the read clock for the given index
+    // memoryMap[address].writeClock[clockIndex]++;
+  }
+};
 
 // VECTOR CLOCKS
 // std::vector<VectorClock> threadClocks;
 // ShadowMemory shadowMemory;
-std::vector<VectorClock> lockClocks;
+// std::vector<VectorClock> lockClocks;
 
-std::mutex threadClocks_mutex;
-std::mutex shadowMemory_mutex;
-std::mutex lockClocks_mutex;
+// std::mutex threadClocks_mutex;
+// std::mutex shadowMemory_mutex;
+// std::mutex lockClocks_mutex;
+
+
+
+
+/* HELPER FUNCTIONS */
+// void sendProgress(long tid, VectorClock mutexClock) {
+//   auto it = std::find(threadIds.begin(), threadIds.end(), tid);
+
+//   if (it != threadIds.end()) {
+//     int index = it - threadIds.begin();
+//   }
+  
+// }
+
+// void advanceLocal(long tid) {
+//   // TODO
+// }
+
 
 // todo: map of thread ids to vector clock indexes.  whenever we create a thread, add a new index to every vector clock = 0
 std::vector<long> threadIds;
 std::mutex threadIds_mutex;
 
-
-/* HELPER FUNCTIONS */
-void sendProgress(long tid, VectorClock mutexClock) {
-  auto it = std::find(threadIds.begin(), threadIds.end(), tid);
-
-  if (it != threadIds.end()) {
-    int index = it - threadIds.begin();
-  }
-  
-}
-
-void advanceLocal(long tid) {
-  // TODO
-}
-
 long getCurrentTid() {
   long tid = syscall(__NR_gettid);
 
-  // todo: this is temporary, create a more robust solution
+  // todo: this is temporary, create a more robust solution - still needed at all?
   threadIds_mutex.lock();
   {
     if(std::find(threadIds.begin(), threadIds.end(), tid) != threadIds.end()) {
@@ -314,7 +319,9 @@ TOLERATE(onMutexLock)(int8_t* mutex) {
   long tid = getCurrentTid();
   fprintf(stdout, "mutex_lock, tid: %d\n", tid);
   printf("mutex_lock, mutex: %hd\n", mutex);
-}
+
+  // VectorClock& threads.getVectorClock(tid);
+}  
 
 void
 TOLERATE(onMutexUnlock)(int8_t* mutex) {

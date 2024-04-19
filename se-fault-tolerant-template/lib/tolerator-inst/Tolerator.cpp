@@ -487,21 +487,18 @@ Tolerator::runOnModule(Module& m) {
 
   // get global mutexes
   // for (auto global = (&m)->global_begin(); global != (&m)->global_end(); ++global) {
-  //   if (global->getType()->isStructTy() && global->getType()->getStructName() == "struct.__pthread_mutex_s") {
-  //     outs() << "Found mutex: \n";
-  //     outs() << "--" << global->getName() << "\n";
-  //   }
+  //   // if (global->getType()->isStructTy() && global->getType()->getStructName() == "struct.__pthread_mutex_s") {
+  //   //   outs() << "Found mutex: \n";
+  //   //   outs() << "--" << global->getName() << "\n";
+  //   // }
 
   //   if (global->getType()->isPointerTy()) {
   //     // outs() << "Pointer type\n";
-
   //     // outs() << "Name: " << global->getName() << "\n";
   //     if (global->getName() == "mutex") {
   //       outs() << "Type: " << global->getType() << "\n";
   //     }
-      
-
-  //     // Type* elementType = global->getType()->getStructElementType();
+  //     Type* elementType = global->getType()->getStructElementType(0);
 
   //     // if (global->getType()->getElementType()->isStructTy()) {
   //     //   outs() << "Struct type\n";
@@ -514,11 +511,13 @@ Tolerator::runOnModule(Module& m) {
   //     // outs() << "Struct type: " << global->getType()->getStructName() << "\n";
   //   }
 
-
-  //   if (global->getType()->isStructTy()) {
-  //     outs() << "Struct type: \n";
-  //   }
-    
+  //   // if (global->getType()->isAggregateType()) {
+  //   //   outs() << "\n\nStruct type: \n\n";
+  //   // }
+  //   // outs() << "Type: " << global->getType()->isPointerTy() << "\n";
+  //   // if (global->getType()->isPointerTy()) {
+  //   //   outs() << "Pointer Type\n";
+  //   // }
   // }
 
      
