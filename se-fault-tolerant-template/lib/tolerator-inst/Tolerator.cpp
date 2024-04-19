@@ -214,7 +214,7 @@ Tolerator::instrumentLoadInstruction(Instruction* I) {
 
   
   // outs() << "LOAD: lOGGING\n";
-  Builder.CreateCall(llvm::cast<Function>(isValidLoadWithExit.getCallee()), args); 
+  // Builder.CreateCall(llvm::cast<Function>(isValidLoadWithExit.getCallee()), args); 
 }
 
 
@@ -295,11 +295,11 @@ Tolerator::instrumentPthreadMutexLockInstruction(Instruction* I) {
   tolerator::AnalysisType analysisType = tolerator::Tolerator::ANALYSIS_TYPE;
 
   IRBuilder<> Builder(I);
-  Value* address = I->getOperand(0);
-  Value* args[] = { address };
+  Value* mutex = I->getOperand(0);
+  Value* args[] = { mutex };
 
   // outs() << "pthread_mutex_lock: lOGGING\n";
-  Builder.CreateCall(llvm::cast<Function>(onMutexLock.getCallee()));
+  Builder.CreateCall(llvm::cast<Function>(onMutexLock.getCallee()), args);
 }
 
 void 
@@ -307,11 +307,22 @@ Tolerator::instrumentPthreadMutexUnlockInstruction(Instruction* I) {
   tolerator::AnalysisType analysisType = tolerator::Tolerator::ANALYSIS_TYPE;
 
   IRBuilder<> Builder(I);
-  Value* address = I->getOperand(0);
-  Value* args[] = { address };
+  Value* mutex = I->getOperand(0);
+
+  // auto* bitcast = new BitCastInst(cast<Value>(I), int32PtrTy, "mutexUnlockInst", I->getNextNode());
+  // Value* address = cast<Value>(bitcast);
+  // outs() << "Address: " << address << "\n";
+  
+  // todo: better location?
+  // CallInst* ci = cast<CallInst>(&I);
+  // Function* f = ci->getCalledFunction();
+  // outs() << "Type: " << address->getType()->getTypeID() << "\n";
+  
+  Value* args[] = { mutex };
+
 
   // outs() << "pthread_mutex_unlock: lOGGING\n";
-  Builder.CreateCall(llvm::cast<Function>(onMutexUnlock.getCallee()));
+  Builder.CreateCall(llvm::cast<Function>(onMutexUnlock.getCallee()), args);
 }
 
 
@@ -345,8 +356,8 @@ Tolerator::runOnModule(Module& m) {
   // todo: pass argument of current thread?
   onPthreadCreate = m.getOrInsertFunction("ToLeRaToR_onPthreadCreate", voidTy);
   onPthreadJoin = m.getOrInsertFunction("ToLeRaToR_onPthreadJoin", voidTy);
-  onMutexLock = m.getOrInsertFunction("ToLeRaToR_onMutexLock", voidTy);
-  onMutexUnlock = m.getOrInsertFunction("ToLeRaToR_onMutexUnlock", voidTy);
+  onMutexLock = m.getOrInsertFunction("ToLeRaToR_onMutexLock", voidTy, int8PtrTy);
+  onMutexUnlock = m.getOrInsertFunction("ToLeRaToR_onMutexUnlock", voidTy, int8PtrTy);
 
   registerIfNewThread = m.getOrInsertFunction("ToLeRaToR_registerIfNewThread", voidTy);
   

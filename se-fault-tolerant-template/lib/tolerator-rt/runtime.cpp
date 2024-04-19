@@ -306,7 +306,8 @@ TOLERATE(onPthreadJoin)() {
 }
 
 void
-TOLERATE(onMutexLock)() {
+TOLERATE(onMutexLock)(int8_t* mutex) {
+  printf("mutex_lock, mutex: %hd\n", mutex);
   // todo: call a function here to determine tid, update vector clock
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
@@ -318,7 +319,7 @@ TOLERATE(onMutexLock)() {
 }
 
 void
-TOLERATE(onMutexUnlock)() {
+TOLERATE(onMutexUnlock)(int8_t* mutex) {
   // todo: call a function here to determine tid, update vector clock
   // update existing vector clocks
   // update shadow memory (todo: stretch?)

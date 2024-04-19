@@ -22,6 +22,8 @@ int y = 0;
 int z = 0;
 int x_from_thread = 0;
 
+pthread_mutex_t mutex2 = PTHREAD_MUTEX_INITIALIZER;
+
 // nidhugg/benchmarks/from_TRACER
 
 // shared variables
@@ -52,6 +54,13 @@ void* thread1(void* arg) {
     pthread_mutex_unlock(&mutex);   // rel(m)
 
     x_from_thread = x_local;
+
+    // test multiple
+    pthread_mutex_lock(&mutex2);     // acq(m)
+    {   
+
+    }           
+    pthread_mutex_unlock(&mutex2);   // rel(m)
 
     pthread_exit(NULL);
 }
