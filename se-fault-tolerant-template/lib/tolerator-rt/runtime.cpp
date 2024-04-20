@@ -156,8 +156,9 @@ public:
 
 // typedef std::vector<uint64_t> ShadowMemoryVectorClock;
 // todo: need to initialize clocks to zero when a thread is spawned?
+// todo: use struct instead.  for now, Read = first, write = second
 class ShadowMemory {
-private:
+public:
   struct ReadWriteClockPair {
     VectorClock readClock;
     VectorClock writeClock;
@@ -196,44 +197,25 @@ public:
     }
   }
 
-  // void readAccess(uintptr_t address, size_t clockIndex) {
-  //   printf("shadow memory read access\n");
-
-  //   std::lock_guard<std::mutex> lock(shadowMemory_mutex);
-  //   // todo: this can be more efficient
-  //   if (memoryMap.find(address) == memoryMap.end()) {
-  //     // not found, create a new vector clock
-  //     // ReadWriteClockPair newPair;
-  //     // memoryMap[address] = ReadWriteClockPair();
-  //     // memoryMap.emplace(address, ReadWriteClockPair());
-  //     memoryMap.insert_or_assign(ReadWriteClockPair());
-  //   }
-
-  //   // update the read clock for the given index
-  //   // memoryMap[address].readClock[clockIndex]++;
-  // }
-
-  // todo: need a separate function, or can be same?
-  // void writeAccess(uintptr_t address, size_t clockIndex) {
-  //   printf("shadow memory write access\n");
-
-  //   std::lock_guard<std::mutex> lock(shadowMemory_mutex);
-  //   // todo: this can be more efficient
-  //   if (memoryMap.find(address) == memoryMap.end()) {
-  //     // not found, create a new vector clock
-  //     // memoryMap[address] = ReadWriteClockPair();
-  //     memoryMap.emplace(address, ReadWriteClockPair());
-  //   }
-
-  //   // update the read clock for the given index
-  //   // memoryMap[address].writeClock[clockIndex]++;
-  // }
+  void writeAccess(uintptr_t address, const VectorClock& writeThreadClock) {
+    auto it = memoryMap.find(address);
+    if (it != memoryMap.end()) {
+      // update readClock
+      it->second.second.merge(writeThreadClock);
+    } else {
+      // address not yet tracked, add with provided clock
+      memoryMap.emplace(address, std::make_pair(writeThreadClock, VectorClock()));
+    }
+  }
 
   void print() {
-    printf("Shadow Memory:\n");
-
     for (auto& location: memoryMap) {
+      printf("\nLOCATION:\n");
+      // std::cout << "Read: " << location.second.first. << " Write: " << location.second.second.print() << "\n";
+      printf("Read: ");
       location.second.first.print();
+
+      printf("Write:");
       location.second.second.print();
     }
   }
@@ -435,11 +417,22 @@ TOLERATE(onMutexUnlock)(int8_t* mutex) {
 void
 // TOLERATE(isValidLoadWithExit)(int8_t* address, int64_t size) { // todo: size needed?
 TOLERATE(isValidLoadWithExit)(int8_t* address) { // todo: size needed?
-  // check against last write
+  
   long tid = getCurrentTid();
 
-  printf("LOAD\n");
+  // printf("LOAD\n");
   uintptr_t address_actual = (uintptr_t)address;
+
+  // check against last write
+  VectorClock& lastWrite = shadowMemory->memoryMap[address_actual].second;
+  VectorClock& threadClock = threads->getVectorClock(tid);
+
+  if (lastWrite.happensBefore(threadClock)) {
+    // printf("valid load\n");
+  } else {
+    printf("INVALID LOAD\n");
+  }
+
   shadowMemory->readAccess(address_actual, threads->getVectorClock(tid));
 }
 
@@ -452,7 +445,22 @@ void
 TOLERATE(isValidStoreWithExit)(int8_t* address) { // todo: size needed?
   // check against last read and write
 
-  // fprintf(stdout, "STORE (Write)\n");
+  long tid = getCurrentTid();
+
+  // printf("STORE\n");
+  uintptr_t address_actual = (uintptr_t)address;
+
+  // check against last read and write
+  VectorClock& lastRead = shadowMemory->memoryMap[address_actual].first;
+  VectorClock& lastWrite = shadowMemory->memoryMap[address_actual].second;
+  VectorClock& threadClock = threads->getVectorClock(tid);
+
+  if (lastWrite.happensBefore(threadClock) && lastRead.happensBefore(threadClock)) {
+  } else {
+    printf("INVALID STORE\n");
+  }
+
+  shadowMemory->writeAccess(address_actual, threads->getVectorClock(tid));
 }
 
 
@@ -508,8 +516,8 @@ TOLERATE(goodbyeworld)() {
   threads->printAllClocks();
   free(threads);
 
+  printf("\nShadow Memory Status at exit:\n");
   shadowMemory->print();
-  
   free(shadowMemory);
 }
 
