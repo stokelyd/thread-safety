@@ -214,7 +214,7 @@ Tolerator::instrumentLoadInstruction(Instruction* I) {
 
   
   // outs() << "LOAD: lOGGING\n";
-  // Builder.CreateCall(llvm::cast<Function>(isValidLoadWithExit.getCallee()), args); 
+  Builder.CreateCall(llvm::cast<Function>(isValidLoadWithExit.getCallee()), args); 
 }
 
 

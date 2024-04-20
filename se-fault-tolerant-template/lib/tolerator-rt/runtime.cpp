@@ -182,21 +182,19 @@ public:
     if (memoryMap.find(address) == memoryMap.end()) {
       // memoryMap.emplace(address, std::pair<VectorClock, VectorClock>(VectorClock(), VectorClock()));
       memoryMap.emplace(address, std::make_pair(VectorClock(), VectorClock()));
-
-      // VectorClock clock1();
-      // VectorClock clock2();
-      // auto newPair = std::make_pair(clock1, clock2);
-      // auto newPair = std::make_pair(VectorClock(), VectorClock());
-      // memoryMap.emplace(address, newPair);
-      // memoryMap[address] = newPair;
-
-
     }
   }
 
-  // void readAccess(uintptr_t address, const VectorClock& readClock) {
-
-  // }
+  void readAccess(uintptr_t address, const VectorClock& readThreadClock) {
+    auto it = memoryMap.find(address);
+    if (it != memoryMap.end()) {
+      // update readClock
+      it->second.first.merge(readThreadClock);
+    } else {
+      // address not yet tracked, add with provided clock
+      memoryMap.emplace(address, std::make_pair(readThreadClock, VectorClock()));
+    }
+  }
 
   // void readAccess(uintptr_t address, size_t clockIndex) {
   //   printf("shadow memory read access\n");
@@ -230,6 +228,15 @@ public:
   //   // update the read clock for the given index
   //   // memoryMap[address].writeClock[clockIndex]++;
   // }
+
+  void print() {
+    printf("Shadow Memory:\n");
+
+    for (auto& location: memoryMap) {
+      location.second.first.print();
+      location.second.second.print();
+    }
+  }
 };
 
 // VECTOR CLOCKS
@@ -429,8 +436,11 @@ void
 // TOLERATE(isValidLoadWithExit)(int8_t* address, int64_t size) { // todo: size needed?
 TOLERATE(isValidLoadWithExit)(int8_t* address) { // todo: size needed?
   // check against last write
+  long tid = getCurrentTid();
 
-  // fprintf(stdout, "LOAD (Read)\n");
+  printf("LOAD\n");
+  uintptr_t address_actual = (uintptr_t)address;
+  shadowMemory->readAccess(address_actual, threads->getVectorClock(tid));
 }
 
 
@@ -497,6 +507,8 @@ TOLERATE(goodbyeworld)() {
   printf("\nThread Clock Status at exit:\n");
   threads->printAllClocks();
   free(threads);
+
+  shadowMemory->print();
   
   free(shadowMemory);
 }
