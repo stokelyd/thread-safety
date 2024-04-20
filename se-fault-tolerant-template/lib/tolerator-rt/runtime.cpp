@@ -50,7 +50,12 @@ public:
   std::mutex vectorClock_mutex;
 
 public:
-  // VectorClock() {};
+  VectorClock() {}
+
+  ~VectorClock() {}
+
+  // copy ctor
+  VectorClock(const VectorClock& other) : vectorClock(other.vectorClock) {}
 
   void advanceLocal(long tid) {
     // todo: bounds check/init to 0?
@@ -138,8 +143,7 @@ public:
   }
 };
 
-VectorClockManager* threads = nullptr;
-VectorClockManager* locks = nullptr;
+
 
 
 
@@ -150,55 +154,83 @@ VectorClockManager* locks = nullptr;
 // }
 
 
-
 // typedef std::vector<uint64_t> ShadowMemoryVectorClock;
-// // todo: need to initialize clocks to zero when a thread is spawned?
-// class ShadowMemory {
-// private:
-//   struct ReadWriteClockPair {
-//     VectorClock readClock;
-//     VectorClock writeClock;
+// todo: need to initialize clocks to zero when a thread is spawned?
+class ShadowMemory {
+private:
+  struct ReadWriteClockPair {
+    VectorClock readClock;
+    VectorClock writeClock;
 
-//     // custom ctor
-//     ReadWriteClockPair() : readClock(), writeClock() {}
-//   };
+    // custom ctor
+    // ReadWriteClockPair() : readClock(), writeClock() {}
+  };
 
-//   std::unordered_map<uintptr_t, ReadWriteClockPair> memoryMap;
-//   std::mutex shadowMemory_mutex;
+  // std::unordered_map<uintptr_t, ReadWriteClockPair> memoryMap;
+  std::unordered_map<uintptr_t, std::pair<VectorClock, VectorClock>> memoryMap;
+  std::mutex shadowMemory_mutex;
 
-// public:
-//   void readAccess(uintptr_t address, size_t clockIndex) {
-//     printf("shadow memory read access\n");
+  // VectorClock readClocks;
+  // VectorClock writeClocks;
+  // std::mutex readClocks_mutex;
+  // std::mutex writeClocks_mutex;
 
-//     std::lock_guard<std::mutex> lock(shadowMemory_mutex);
-//     // todo: this can be more efficient
-//     if (memoryMap.find(address) == memoryMap.end()) {
-//       // not found, create a new vector clock
-//       // ReadWriteClockPair newPair;
-//       // memoryMap[address] = ReadWriteClockPair();
-//       memoryMap.emplace(address, ReadWriteClockPair());
-//     }
+public:
+  ShadowMemory() {}
 
-//     // update the read clock for the given index
-//     // memoryMap[address].readClock[clockIndex]++;
-//   }
+  void addMemoryLocation(uintptr_t address) {
+    if (memoryMap.find(address) == memoryMap.end()) {
+      // memoryMap.emplace(address, std::pair<VectorClock, VectorClock>(VectorClock(), VectorClock()));
+      memoryMap.emplace(address, std::make_pair(VectorClock(), VectorClock()));
 
-//   // todo: need a separate function, or can be same?
-//   void writeAccess(uintptr_t address, size_t clockIndex) {
-//     printf("shadow memory write access\n");
+      // VectorClock clock1();
+      // VectorClock clock2();
+      // auto newPair = std::make_pair(clock1, clock2);
+      // auto newPair = std::make_pair(VectorClock(), VectorClock());
+      // memoryMap.emplace(address, newPair);
+      // memoryMap[address] = newPair;
 
-//     std::lock_guard<std::mutex> lock(shadowMemory_mutex);
-//     // todo: this can be more efficient
-//     if (memoryMap.find(address) == memoryMap.end()) {
-//       // not found, create a new vector clock
-//       // memoryMap[address] = ReadWriteClockPair();
-//       memoryMap.emplace(address, ReadWriteClockPair());
-//     }
 
-//     // update the read clock for the given index
-//     // memoryMap[address].writeClock[clockIndex]++;
-//   }
-// };
+    }
+  }
+
+  // void readAccess(uintptr_t address, const VectorClock& readClock) {
+
+  // }
+
+  // void readAccess(uintptr_t address, size_t clockIndex) {
+  //   printf("shadow memory read access\n");
+
+  //   std::lock_guard<std::mutex> lock(shadowMemory_mutex);
+  //   // todo: this can be more efficient
+  //   if (memoryMap.find(address) == memoryMap.end()) {
+  //     // not found, create a new vector clock
+  //     // ReadWriteClockPair newPair;
+  //     // memoryMap[address] = ReadWriteClockPair();
+  //     // memoryMap.emplace(address, ReadWriteClockPair());
+  //     memoryMap.insert_or_assign(ReadWriteClockPair());
+  //   }
+
+  //   // update the read clock for the given index
+  //   // memoryMap[address].readClock[clockIndex]++;
+  // }
+
+  // todo: need a separate function, or can be same?
+  // void writeAccess(uintptr_t address, size_t clockIndex) {
+  //   printf("shadow memory write access\n");
+
+  //   std::lock_guard<std::mutex> lock(shadowMemory_mutex);
+  //   // todo: this can be more efficient
+  //   if (memoryMap.find(address) == memoryMap.end()) {
+  //     // not found, create a new vector clock
+  //     // memoryMap[address] = ReadWriteClockPair();
+  //     memoryMap.emplace(address, ReadWriteClockPair());
+  //   }
+
+  //   // update the read clock for the given index
+  //   // memoryMap[address].writeClock[clockIndex]++;
+  // }
+};
 
 // VECTOR CLOCKS
 // std::vector<VectorClock> threadClocks;
@@ -209,6 +241,10 @@ VectorClockManager* locks = nullptr;
 // std::mutex shadowMemory_mutex;
 // std::mutex lockClocks_mutex;
 
+
+VectorClockManager* threads = nullptr;
+VectorClockManager* locks = nullptr;
+ShadowMemory* shadowMemory = nullptr;
 
 
 
@@ -263,6 +299,7 @@ TOLERATE(initializeTracker)() {
   // todo: use unique_ptr instead of new
   locks = new VectorClockManager();
   threads = new VectorClockManager();
+  shadowMemory = new ShadowMemory();
 
 
 
@@ -453,20 +490,6 @@ TOLERATE(helloworld)() {
 // todo: testing only, remove
 void
 TOLERATE(goodbyeworld)() {
-  // printf("\nTracked heap allocations remaining at exit:\n");
-  // for (int i = 0; i < MAX_NUM_TRACKED_ALLOCATIONS; ++i) {
-  //   if (heapAllocations[i].address != 0) {
-  //     printf("--> address = %p, size = %lld\n", heapAllocations[i].address, (long long)heapAllocations[i].size);
-  //   }
-  // }
-
-  // printf("\nTracked stack allocations remaining at exit:\n");
-  // for (int i = 0; i < MAX_NUM_TRACKED_ALLOCATIONS; ++i) {
-  //   if (stackAllocations[i].address != 0) {
-  //     printf("--> address = %p, size = %lld\n", stackAllocations[i].address, (long long)stackAllocations[i].size);
-  //   }
-  // }
-
   printf("\nLock Clock Status at exit:\n");
   locks->printAllClocks();
   free(locks);
@@ -475,6 +498,7 @@ TOLERATE(goodbyeworld)() {
   threads->printAllClocks();
   free(threads);
   
+  free(shadowMemory);
 }
 
 
