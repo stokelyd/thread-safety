@@ -31,6 +31,7 @@ clang -S -O0 -g -emit-llvm slides-example.c
 // make exec
 clang -o simpletest simpletest.c -pthread
 clang -o tiny_race tiny_race.c -pthread
+clang -o simplevalid simplevalid.c -pthread
 
 clang -fsanitize=thread -g -O1 simpletest.c
 clang -fsanitize=thread -g -O1 tiny_race.c
