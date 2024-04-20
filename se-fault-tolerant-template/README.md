@@ -35,6 +35,7 @@ clang -o simplevalid simplevalid.c -pthread
 
 clang -fsanitize=thread -g -O1 simpletest.c
 clang -fsanitize=thread -g -O1 tiny_race.c
+clang -fsanitize=thread -g -O0 simplevalid.c
 
 
 

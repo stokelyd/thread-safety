@@ -528,8 +528,8 @@ Tolerator::runOnModule(Module& m) {
   // appendToGlobalCtors(m, llvm::cast<Function>(helloworld.getCallee()), 0);
 
 
-  auto goodbyeworld = m.getOrInsertFunction("ToLeRaToR_goodbyeworld", voidTy);
-  appendToGlobalDtors(m, llvm::cast<Function>(goodbyeworld.getCallee()), 0);
+  // auto goodbyeworld = m.getOrInsertFunction("ToLeRaToR_goodbyeworld", voidTy);
+  // appendToGlobalDtors(m, llvm::cast<Function>(goodbyeworld.getCallee()), 0);
 
   return true;
 }

@@ -114,7 +114,7 @@ public:
 class VectorClockManager {
 public:
   std::unordered_map<long, VectorClock> clocks;
-  std::mutex threadClock_mutex;
+  std::mutex clock_mutex;
 
 public:
   // void addVectorClock(long id) {
@@ -122,7 +122,7 @@ public:
   // }
 
   VectorClock& getVectorClock(long id) {
-    std::lock_guard<std::mutex> lock(threadClock_mutex); // todo: verify
+    std::lock_guard<std::mutex> lock(clock_mutex); // todo: verify
     return clocks[id];
   }
 
@@ -283,7 +283,7 @@ TOLERATE(initializeTracker)() {
   // ShadowMemory shadowMemory;
 
   long tid = getCurrentTid();
-  printf("initialize: tid=%d\n", tid);
+  // printf("initialize: tid=%d\n", tid);
 
   // todo: use unique_ptr instead of new
   locks = new VectorClockManager();
@@ -306,49 +306,49 @@ TOLERATE(initializeTracker)() {
 /* TRACK ALLOCATIONS */
 void
 TOLERATE(registerMalloc)(int8_t* address, int64_t size) {
-  // printf("Registering Malloc: size = %d\n", size);
-  // printf("Registering Malloc: address = %p, size = %lld\n", address, (long long)size);
+  // // printf("Registering Malloc: size = %d\n", size);
+  // // printf("Registering Malloc: address = %p, size = %lld\n", address, (long long)size);
 
+  // // struct Allocation allocation = {address, size};
   // struct Allocation allocation = {address, size};
-  struct Allocation allocation = {address, size};
-  // todo: check not within existing allocated space?
-  heapAllocations[heapAllocationsIndex] = allocation;
-  heapAllocationsIndex++;
+  // // todo: check not within existing allocated space?
+  // heapAllocations[heapAllocationsIndex] = allocation;
+  // heapAllocationsIndex++;
 
-  // todo: better tracking?  dynamic data structure removes need
-  if (heapAllocationsIndex >= MAX_NUM_TRACKED_ALLOCATIONS) {
-    fprintf(stderr, "ERROR: max tracked heap allocations exceeded\n");
-    exit(-1);
-  }
+  // // todo: better tracking?  dynamic data structure removes need
+  // if (heapAllocationsIndex >= MAX_NUM_TRACKED_ALLOCATIONS) {
+  //   fprintf(stderr, "ERROR: max tracked heap allocations exceeded\n");
+  //   exit(-1);
+  // }
 }
 
 void
 TOLERATE(registerAlloca)(int8_t* address, int64_t size) {
-  // printf("Registering Alloca: address = %p, size = %lld\n", address, (long long)size);
+  // // printf("Registering Alloca: address = %p, size = %lld\n", address, (long long)size);
 
-  struct Allocation allocation = {address, size};
-  // todo: check not within existing allocated space?
-  stackAllocations[stackAllocationsIndex] = allocation;
-  stackAllocationsIndex++;
+  // struct Allocation allocation = {address, size};
+  // // todo: check not within existing allocated space?
+  // stackAllocations[stackAllocationsIndex] = allocation;
+  // stackAllocationsIndex++;
 
-  // todo: better tracking?  dynamic data structure removes need
-  if (stackAllocationsIndex >= MAX_NUM_TRACKED_ALLOCATIONS) {
-    fprintf(stderr, "ERROR: max tracked stack allocations exceeded\n");
-    exit(-1);
-  }
+  // // todo: better tracking?  dynamic data structure removes need
+  // if (stackAllocationsIndex >= MAX_NUM_TRACKED_ALLOCATIONS) {
+  //   fprintf(stderr, "ERROR: max tracked stack allocations exceeded\n");
+  //   exit(-1);
+  // }
 } 
 
 void
 TOLERATE(unregisterAlloca)(int8_t* address) {
-  // printf("Unregistering Alloca: address = %p\n", address);
+  // // printf("Unregistering Alloca: address = %p\n", address);
 
-  for (int i = 0; i < stackAllocationsIndex; ++i) {
-    if (stackAllocations[i].address == address) {
-      stackAllocations[i] = nullAllocation;
-    }
-  }
+  // for (int i = 0; i < stackAllocationsIndex; ++i) {
+  //   if (stackAllocations[i].address == address) {
+  //     stackAllocations[i] = nullAllocation;
+  //   }
+  // }
 
-  // printf("Error: could not unregister: %p\n", address);
+  // // printf("Error: could not unregister: %p\n", address);
 }
 
 /* TRACK THREADING FUNCTIONS */
@@ -380,11 +380,11 @@ TOLERATE(onMutexLock)(int8_t* mutex) {
   // update existing vector clocks
   // update shadow memory (todo: stretch?)
   long tid = getCurrentTid();
-  printf("mutex_lock: tid=%d mutex=%hd\n", tid, mutex);
+  // printf("mutex_lock: tid=%d mutex=%hd\n", tid, mutex);
 
 
   VectorClock& threadClock = threads->getVectorClock(tid);
-  VectorClock& mutexClock = locks->getVectorClock(tid);
+  VectorClock& mutexClock = locks->getVectorClock(0); // todo: temp, replace with actual mutex ID
   
   threadClock.receiveProgress(mutexClock);
   threadClock.advanceLocal(tid);
@@ -402,10 +402,10 @@ TOLERATE(onMutexUnlock)(int8_t* mutex) {
   // update shadow memory (todo: stretch?)
 
   long tid = getCurrentTid();
-  printf("mutex_unlock: tid=%d mutex=%hd\n", tid, mutex);
+  // printf("mutex_unlock: tid=%d mutex=%hd\n", tid, mutex);
 
   VectorClock& threadClock = threads->getVectorClock(tid);
-  VectorClock& mutexClock = locks->getVectorClock(tid);
+  VectorClock& mutexClock = locks->getVectorClock(0); // todo: temporary
   
   threadClock.sendProgress(mutexClock);
   threadClock.advanceLocal(tid);
@@ -430,7 +430,7 @@ TOLERATE(isValidLoadWithExit)(int8_t* address) { // todo: size needed?
   if (lastWrite.happensBefore(threadClock)) {
     // printf("valid load\n");
   } else {
-    printf("INVALID LOAD\n");
+    // printf("INVALID LOAD\n");
   }
 
   shadowMemory->readAccess(address_actual, threads->getVectorClock(tid));
@@ -457,7 +457,7 @@ TOLERATE(isValidStoreWithExit)(int8_t* address) { // todo: size needed?
 
   if (lastWrite.happensBefore(threadClock) && lastRead.happensBefore(threadClock)) {
   } else {
-    printf("INVALID STORE\n");
+    // printf("INVALID STORE\n");
   }
 
   shadowMemory->writeAccess(address_actual, threads->getVectorClock(tid));
@@ -469,19 +469,19 @@ TOLERATE(isValidStoreWithExit)(int8_t* address) { // todo: size needed?
 /* FREE */
 void
 TOLERATE(isValidFreeWithExit)(int8_t* address) {
-  struct Allocation tempAlloc = {0, 0};
+  // struct Allocation tempAlloc = {0, 0};
 
-  for (int i = 0; i < MAX_NUM_TRACKED_ALLOCATIONS; ++i) {
-    // todo: improve with hash map.  Also, need to check not 0,0?
-    if (heapAllocations[i].address == address) {
-      heapAllocations[i] = tempAlloc;
-      // printf("TEST: successful free\n");
-      return;
-    }
-  }
+  // for (int i = 0; i < MAX_NUM_TRACKED_ALLOCATIONS; ++i) {
+  //   // todo: improve with hash map.  Also, need to check not 0,0?
+  //   if (heapAllocations[i].address == address) {
+  //     heapAllocations[i] = tempAlloc;
+  //     // printf("TEST: successful free\n");
+  //     return;
+  //   }
+  // }
 
-  // free address not found as allocated, double/invalid free
-  fprintf(stderr, "FOUND: Invalid free of memory\n");
+  // // free address not found as allocated, double/invalid free
+  // // fprintf(stderr, "FOUND: Invalid free of memory\n");
 }
 
 
@@ -489,7 +489,7 @@ TOLERATE(isValidFreeWithExit)(int8_t* address) {
 void
 TOLERATE(registerIfNewThread)() {
   long tid = getCurrentTid();
-  fprintf(stdout, "tid: %d\n", tid);
+  // fprintf(stdout, "tid: %d\n", tid);
 
   // todo
 }

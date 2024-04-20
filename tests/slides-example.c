@@ -81,7 +81,7 @@ void run_n_tests(int numTests) {
             exit(1);
         }
         
-        printf("Value of x from thread: %d\n", x_from_thread);
+        // printf("Value of x from thread: %d\n", x_from_thread);
     }
 }
 
@@ -89,7 +89,7 @@ void run_n_tests(int numTests) {
 int main()
 {
     // run_n_tests(100);
-    run_n_tests(1);
+    run_n_tests(5000);
 
     return 0;
 }
